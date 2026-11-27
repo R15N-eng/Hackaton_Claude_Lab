@@ -8,9 +8,9 @@ em que cada criança mantém no máximo uma oferta em aberto por vez.
 Garantias do algoritmo:
   · estabilidade — nenhuma criança fica fora de um programa onde outra criança
     com pontuação menor entrou (ausência de "inveja justificada");
-  · à prova de estratégia para a família — declarar a preferência verdadeira é
-    a melhor jogada, então a ordem declarada passa a ser informação confiável
-    para o planejamento;
+  · à prova de estratégia SÓ quando a lista de opções não tem limite. Com o
+    teto de 5 opções deste processo, a garantia não vale em geral (Haeringer &
+    Klijn, 2009): para algumas famílias pode compensar incluir uma opção segura;
   · determinístico e auditável — mesma entrada, mesma saída, sem modelo treinado.
 
 Complexidade O(total de opções). Roda em segundos sobre um processo inteiro.

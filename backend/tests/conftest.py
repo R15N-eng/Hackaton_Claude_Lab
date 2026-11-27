@@ -61,6 +61,8 @@ def client(db_session, monkeypatch):
     monkeypatch.setattr("app.config.ACCEPT_REGISTRATIONS", True)
     monkeypatch.setattr("app.config.ADMIN_API_KEY", "chave-somente-de-teste")
     monkeypatch.setattr("app.config.META_VERIFY_TOKEN", "fake-verify-token")
+    monkeypatch.setattr("app.config.META_APP_SECRET", "segredo-de-app-somente-de-teste")
+    monkeypatch.setattr("app.auth._erros_de_codigo", {})
 
     with TestClient(app, headers={"X-Admin-Key": "chave-somente-de-teste"}) as test_client:
         yield test_client

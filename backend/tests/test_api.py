@@ -1,3 +1,7 @@
+import hashlib
+import hmac
+import json
+
 from app import models
 
 
@@ -33,6 +37,20 @@ def _payload_meta(telefone_e164, texto):
             }
         ]
     }
+
+
+def _assinar(corpo, segredo="segredo-de-app-somente-de-teste"):
+    return "sha256=" + hmac.new(segredo.encode(), corpo, hashlib.sha256).hexdigest()
+
+
+def _post_webhook(client, payload):
+    """Envia o webhook assinado, como a Meta faz."""
+    corpo = json.dumps(payload).encode()
+    return client.post(
+        "/whatsapp/webhook",
+        content=corpo,
+        headers={"Content-Type": "application/json", "X-Hub-Signature-256": _assinar(corpo)},
+    )
 
 
 def _ultima_notificacao(db_session, telefone_e164):
@@ -202,7 +220,7 @@ def test_login_por_codigo_e_dono_da_inscricao(client, db_session):
 
 def test_whatsapp_webhook_status_sem_inscricao(client, db_session):
     telefone = "+5521888880000"
-    resp = client.post("/whatsapp/webhook", json=_payload_meta(telefone, "status"))
+    resp = _post_webhook(client, _payload_meta(telefone, "status"))
     assert resp.status_code == 200
     notificacao = _ultima_notificacao(db_session, telefone)
     assert "INSCRICAO" in notificacao.corpo.upper()
@@ -237,7 +255,7 @@ def test_verificacao_mensal_telefone(client, db_session):
     assert resp.json()["mensagens_enviadas"] == 1
 
     telefone = "+5521999990003"
-    resp = client.post("/whatsapp/webhook", json=_payload_meta(telefone, "SIM"))
+    resp = _post_webhook(client, _payload_meta(telefone, "SIM"))
     assert resp.status_code == 200
     notificacao = _ultima_notificacao(db_session, telefone)
     assert "confirmado" in notificacao.corpo.lower()
@@ -263,7 +281,7 @@ def test_inscricao_via_whatsapp(client, db_session):
     ] + ["sim"] * len(REGUA_PADRAO)
 
     for passo in passos:
-        resp = client.post("/whatsapp/webhook", json=_payload_meta(telefone_e164, passo))
+        resp = _post_webhook(client, _payload_meta(telefone_e164, passo))
         assert resp.status_code == 200
 
     notificacao = _ultima_notificacao(db_session, telefone_e164)

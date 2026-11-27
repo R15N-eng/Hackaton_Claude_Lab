@@ -38,7 +38,7 @@
   const cabecalho = `
     <div class="shell-topo">
       <div class="shell-interno">
-        <span><b>Prefeitura do Rio</b> · Secretaria Municipal de Educação</span>
+        <span><b>Projeto independente de hackathon</b> · não é um serviço da Prefeitura do Rio</span>
         <span class="shell-topo-sel">Protótipo — Claude Impact Lab 2026</span>
       </div>
     </div>

@@ -5,7 +5,10 @@
    ============================================================ */
 
 const USE_MOCK = false;
-const API_BASE = "https://hackaton-atropic-api.onrender.com";
+// Em ambiente local, o fluxo usa o back local: dados de teste nunca vao para o deploy publico.
+const API_BASE = ["localhost", "127.0.0.1"].includes(globalThis.location?.hostname)
+  ? `http://${globalThis.location.hostname}:8000`
+  : "https://hackaton-atropic-api.onrender.com";
 
 /* ------------------------------------------------------------
    Auth — sessão da família (token opaco, guardado no localStorage).
@@ -530,6 +533,12 @@ const MockApi = {
    ------------------------------------------------------------ */
 
 async function httpJson(path, options) {
+  // Defesa extra: fora do ambiente local, o site nunca envia uma inscrição.
+  if (path === "/inscricao" && options?.method === "POST" && !["localhost", "127.0.0.1"].includes(location.hostname)) {
+    const err = new Error("Cadastro desativado nesta demonstração.");
+    err.status = 403;
+    throw err;
+  }
   let res;
   try {
     const headers = { "Content-Type": "application/json" };

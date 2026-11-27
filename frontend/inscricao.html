@@ -34,6 +34,11 @@
   <p class="page-lede">Leva poucos minutos. Você poderá acompanhar a posição na fila depois, a qualquer momento.</p>
   <p class="section-sub"><a class="link-btn" href="login.html">Já se inscreveu antes? Entrar →</a></p>
 
+  <div id="aviso-demo" role="note" hidden style="margin:16px 0;padding:16px;border:2px solid #8a1c1c;border-radius:8px;background:#fff4f4;color:#5c0f0f;">
+    <strong>Cadastro desativado nesta demonstração.</strong> Este é um protótipo de hackathon.
+    Não informe nomes, telefones, endereços ou outros dados reais.
+  </div>
+
   <form id="form-inscricao" novalidate>
     <div class="form-sections">
       <div class="card">
@@ -95,5 +100,14 @@
 <script src="app.js"></script>
 <script>App.initInscricao();</script>
 <script src="shell.js"></script>
+<script>
+  // O formulário só funciona em ambiente local, com dados fictícios.
+  if (!["localhost", "127.0.0.1"].includes(location.hostname)) {
+    document.getElementById("aviso-demo").hidden = false;
+    document.getElementById("form-inscricao").inert = true;
+    document.getElementById("form-inscricao").style.opacity = "0.45";
+    document.getElementById("form-inscricao").addEventListener("submit", (e) => { e.preventDefault(); e.stopImmediatePropagation(); }, true);
+  }
+</script>
 </body>
 </html>

@@ -28,8 +28,8 @@ saída de `backend/engine/simulate.py`.
 
 ## O problema, com números reais
 
-A base pública da SME (`dadoscreche-main/`, Query A/B/C, 2021–2025,
-anonimizada) mostra a dinâmica do funil de inscrição ano a ano:
+A base do hackathon, anonimizada pela SME (Query A/B/C, 2021–2025; as
+tabelas A e B não são distribuídas neste repositório), mostra a dinâmica do funil de inscrição ano a ano:
 
 | Ano | Inscrições | Crianças distintas | Vagas ocupadas | Lista de espera | Cancelados | Inscrições/vaga | Taxa de ocupação |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -276,7 +276,7 @@ frontend/
   motor-api.js      fronteira com /motor/*
   inscricao.html … status.html   fluxo de inscrição em 4 telas (demo ao vivo)
 pessoa_1/           motor paralelo do Back A (não usado pela API)
-dadoscreche-main/   base bruta da SME + análise exploratória
+dadoscreche-main/   dados do hackathon (sem as bases individuais) + análise
 ```
 
 ---
@@ -350,7 +350,7 @@ explicativo da regra da SME, não como funcionalidade.
 ## Sobre os dados
 
 Base anonimizada pela SME (aleatorização, generalização e supressão).
-A coluna de CEP das famílias, que a aplicação não usava, foi removida do arquivo atual para reduzir o risco de reidentificação. Versões anteriores do arquivo continuam no histórico do Git. Os demais dados continuam sendo registros individuais: trate-os como sensíveis e não os combine com outras fontes.
+Para reduzir o risco de reidentificação, a versão atual não distribui as bases de inscrições e de respostas socioeconômicas, e o arquivo usado pela aplicação não tem colunas de endereço das famílias. **As versões anteriores continuam no histórico do Git.** Os demais dados continuam sendo registros individuais: trate-os como sensíveis e não os combine com outras fontes.
 **Os indicadores não representam a realidade** — ilustram a dinâmica do processo
 de inscrição em creche entre 2021 e 2025.
 

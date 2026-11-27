@@ -342,6 +342,7 @@ explicativo da regra da SME, não como funcionalidade.
 ## Sobre os dados
 
 Base anonimizada pela SME (aleatorização, generalização e supressão).
+A coluna de CEP das famílias, que a aplicação não usava, foi removida do arquivo atual para reduzir o risco de reidentificação. Versões anteriores do arquivo continuam no histórico do Git.
 **Os indicadores não representam a realidade** — ilustram a dinâmica do processo
 de inscrição em creche entre 2021 e 2025.
 

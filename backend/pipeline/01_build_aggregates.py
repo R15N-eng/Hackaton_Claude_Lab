@@ -45,7 +45,6 @@ select a.aluno_anon                              as crianca,
        lpad(cast(a.unidade as varchar),7,'0')||'|'||trim(a.grupamento)||'|'||a.horario as programa,
        coalesce(s.score, 0)                      as score,
        a.bairro                                  as bairro_familia,
-       a.CEP                                     as cep_familia,
        a.situacao,
        case when a.situacao='Confirmado' then 1 else 0 end as confirmado_real
 from A a left join SCORE s using(prm_id, plm_id, ipl_id)

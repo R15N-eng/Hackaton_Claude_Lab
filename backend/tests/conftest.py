@@ -57,9 +57,12 @@ def client(db_session, monkeypatch):
     monkeypatch.setattr(whatsapp.httpx, "post", lambda *a, **k: _FakeResponse())
     monkeypatch.setattr("app.config.META_WHATSAPP_TOKEN", "fake-token")
     monkeypatch.setattr("app.config.META_PHONE_NUMBER_ID", "000000000000000")
+    # As travas bloqueiam por padrao; os testes do fluxo as abrem explicitamente.
+    monkeypatch.setattr("app.config.ACCEPT_REGISTRATIONS", True)
+    monkeypatch.setattr("app.config.ADMIN_API_KEY", "chave-somente-de-teste")
     monkeypatch.setattr("app.config.META_VERIFY_TOKEN", "fake-verify-token")
 
-    with TestClient(app) as test_client:
+    with TestClient(app, headers={"X-Admin-Key": "chave-somente-de-teste"}) as test_client:
         yield test_client
 
     app.dependency_overrides.clear()

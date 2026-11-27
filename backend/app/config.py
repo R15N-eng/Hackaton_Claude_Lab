@@ -11,6 +11,12 @@ META_WHATSAPP_TOKEN = os.getenv("META_WHATSAPP_TOKEN", "")
 META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
 META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "")
 
+# Seguranca: as duas opcoes abaixo BLOQUEIAM por padrao (ver app/guards.py).
+# Chave das rotas de manutencao. Vazia = rotas desativadas.
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
+# Aceitar novas inscricoes (site e webhook). Use apenas em ambiente local, com dados ficticios.
+ACCEPT_REGISTRATIONS = os.getenv("ACCEPT_REGISTRATIONS", "false").lower() == "true"
+
 ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "false").lower() == "true"
 
 # Janela em dias que o responsavel tem para trocar a unidade escolhida.

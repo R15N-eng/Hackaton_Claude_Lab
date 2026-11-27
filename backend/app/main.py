@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 import seed_data  # script na raiz de backend/, nao faz parte do pacote app
 
-from app import auth, classification_engine, config, crud, models, schemas, scheduler, whatsapp
+from app import auth, classification_engine, config, crud, guards, models, schemas, scheduler, whatsapp
 from app.database import get_db, init_db
 
 logging.basicConfig(level=logging.INFO)
@@ -185,7 +185,7 @@ def motor_notificacoes(limite: int = 20) -> dict:
 # Programas (unidades)
 # --------------------------------------------------------------------------
 
-@app.post("/programas", response_model=schemas.ProgramaOut)
+@app.post("/programas", response_model=schemas.ProgramaOut, dependencies=[Depends(guards.exigir_admin)])
 def criar_programa(dados: schemas.ProgramaIn, db: Session = Depends(get_db)):
     programa = models.Programa(**dados.model_dump())
     db.add(programa)
@@ -227,7 +227,7 @@ def _serializar_programa(programa: models.Programa, db: Session) -> schemas.Prog
 # Etapa 1: inscricao
 # --------------------------------------------------------------------------
 
-@app.delete("/inscricao/{crianca_id}")
+@app.delete("/inscricao/{crianca_id}", dependencies=[Depends(guards.exigir_admin)])
 def excluir_inscricao(crianca_id: int, confirmar: bool = False, db: Session = Depends(get_db)):
     """Remove UMA inscricao e o que depende dela (preferencias, notificacoes).
 
@@ -272,7 +272,7 @@ def excluir_inscricao(crianca_id: int, confirmar: bool = False, db: Session = De
     return {"ok": True, "crianca_id": crianca_id, "nome": nome, "excluida": True}
 
 
-@app.post("/inscricao", response_model=schemas.InscricaoOut)
+@app.post("/inscricao", response_model=schemas.InscricaoOut, dependencies=[Depends(guards.exigir_inscricoes_abertas)])
 def inscrever(dados: schemas.InscricaoIn, db: Session = Depends(get_db)):
     crianca = crud.criar_inscricao(db, dados)
     whatsapp.enviar_whatsapp(
@@ -663,7 +663,7 @@ def escolher_unidade(
 # Etapa 3/4: avancar status do processo (classificado, selecionado, matriculado...)
 # --------------------------------------------------------------------------
 
-@app.post("/avancar_processo", response_model=schemas.InscricaoOut)
+@app.post("/avancar_processo", response_model=schemas.InscricaoOut, dependencies=[Depends(guards.exigir_admin)])
 def avancar_processo(dados: schemas.AvancarProcessoIn, db: Session = Depends(get_db)):
     crianca = db.get(models.Crianca, dados.crianca_id)
     if crianca is None:
@@ -787,7 +787,7 @@ def _processar_mensagem_whatsapp(db: Session, telefone: str, texto: str) -> str:
     )
 
 
-@app.post("/whatsapp/webhook")
+@app.post("/whatsapp/webhook", dependencies=[Depends(guards.exigir_inscricoes_abertas)])
 async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.json()
     for telefone, texto in _extrair_mensagens_meta(payload):
@@ -799,7 +799,7 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     return {"status": "ok"}
 
 
-@app.post("/whatsapp/enviar_convocacao/{crianca_id}")
+@app.post("/whatsapp/enviar_convocacao/{crianca_id}", dependencies=[Depends(guards.exigir_admin)])
 def enviar_convocacao_manual(crianca_id: int, db: Session = Depends(get_db)):
     """Endpoint auxiliar para reenviar a convocacao manualmente (ex: falha anterior)."""
     crianca = db.get(models.Crianca, crianca_id)
@@ -820,7 +820,7 @@ def enviar_convocacao_manual(crianca_id: int, db: Session = Depends(get_db)):
 # Job mensal de verificacao de telefone (trigger manual para demo/teste)
 # --------------------------------------------------------------------------
 
-@app.post("/jobs/verificar_telefones")
+@app.post("/jobs/verificar_telefones", dependencies=[Depends(guards.exigir_admin)])
 def disparar_verificacao_telefones(db: Session = Depends(get_db)):
     enviados = whatsapp.disparar_verificacao_mensal_telefone(db)
     return {"mensagens_enviadas": enviados}

@@ -1,4 +1,8 @@
-🔗 **Site:** https://r15n-eng.github.io/Hackaton_Claude_Lab
+> [!IMPORTANT]
+> **Projeto independente, feito em hackathon. Não é um serviço da Prefeitura do Rio nem da Secretaria Municipal de Educação.**
+> Não informe dados pessoais reais. O cadastro fica desativado fora do ambiente local, e a API só aceita inscrições com `ACCEPT_REGISTRATIONS=true`.
+
+🔗 **Demonstração (cadastro desativado):** https://r15n-eng.github.io/Hackaton_Claude_Lab
 🎥 **Vídeo:** Na raiz do  git
 
 ---
@@ -325,6 +329,8 @@ explicativo da regra da SME, não como funcionalidade.
   existem nos dados históricos e são explorados pelo motor alternativo
   (`pessoa_1`, ver tabela acima) — não trocamos para ele nesta entrega por
   falta de tempo para revalidar os números contra o material já escrito.
+- **Rotas de manutenção.** Exigem o header `X-Admin-Key` igual à variável `ADMIN_API_KEY`; sem ela, ficam desativadas. Para testar o fluxo localmente, defina também `ACCEPT_REGISTRATIONS=true` e use apenas dados fictícios.
+- **Ainda sem proteção.** Falta limite de tentativas no código de login, validação de assinatura no webhook da Meta, autenticação em `GET /classificacao/{id}/recomendacoes` (consultável por ID sequencial; não retorna nome nem telefone) e restrição de CORS. Não use com dados reais.
 - **Autenticação mínima.** Há login por telefone com código via WhatsApp para a
   família voltar de outro aparelho, mas o painel SME/CRE não tem autenticação
   nenhuma — é protótipo de demonstração, não sistema em produção.

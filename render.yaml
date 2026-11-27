@@ -12,3 +12,6 @@ services:
         value: 3.11.9
       - key: ENABLE_SCHEDULER
         value: "false"
+      # Mantenha "false" em qualquer deploy publico.
+      - key: ACCEPT_REGISTRATIONS
+        value: "false"

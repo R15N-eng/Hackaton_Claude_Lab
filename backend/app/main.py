@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 import seed_data  # script na raiz de backend/, nao faz parte do pacote app
 
-from app import auth, classification_engine, config, crud, models, schemas, scheduler, whatsapp
+from app import auth, classification_engine, config, crud, guards, models, schemas, scheduler, whatsapp
 from app.database import get_db, init_db
 
 logging.basicConfig(level=logging.INFO)
@@ -17,9 +17,10 @@ app = FastAPI(title="Fila de Creches - API (Back B)")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=config.CORS_ORIGINS,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Key"],
 )
 
 
@@ -50,7 +51,7 @@ def solicitar_codigo(dados: schemas.SolicitarCodigoIn, db: Session = Depends(get
         .first()
         is not None
     )
-    if tem_inscricao:
+    if tem_inscricao and auth.pode_pedir_codigo(db, dados.telefone):
         codigo = auth.gerar_codigo()
         db.add(
             models.CodigoLogin(
@@ -74,6 +75,7 @@ def solicitar_codigo(dados: schemas.SolicitarCodigoIn, db: Session = Depends(get
 
 @app.post("/auth/verificar-codigo", response_model=schemas.SessaoOut)
 def verificar_codigo(dados: schemas.VerificarCodigoIn, db: Session = Depends(get_db)):
+    auth.garantir_tentativas_disponiveis(dados.telefone)
     registro = (
         db.query(models.CodigoLogin)
         .filter(
@@ -85,7 +87,9 @@ def verificar_codigo(dados: schemas.VerificarCodigoIn, db: Session = Depends(get
         .first()
     )
     if registro is None or registro.expira_em < dt.datetime.utcnow():
+        auth.registrar_erro_de_codigo(dados.telefone)
         raise HTTPException(400, "Codigo invalido ou expirado")
+    auth.limpar_erros_de_codigo(dados.telefone)
     registro.usado = True
     db.add(registro)
     db.commit()
@@ -130,7 +134,7 @@ def motor_programas(busca: str = "", limite: int = 100) -> list[dict]:
     return engine_service.listar_programas(busca=busca, limite=limite)
 
 
-@app.get("/motor/programa")
+@app.get("/motor/programa", dependencies=[Depends(guards.exigir_dados_individuais)])
 def motor_programa(programa: str, limite_fila: int = 50) -> dict:
     """`programa` e a chave composta unidade|grupamento|turno.
     Vem como query param porque contem '|', que quebraria um path param."""
@@ -141,7 +145,7 @@ def motor_programa(programa: str, limite_fila: int = 50) -> dict:
     return dados
 
 
-@app.get("/motor/crianca/{aluno_anon}")
+@app.get("/motor/crianca/{aluno_anon}", dependencies=[Depends(guards.exigir_dados_individuais)])
 def motor_crianca(aluno_anon: str) -> dict:
     from app import engine_service
     dados = engine_service.serializar_crianca(aluno_anon)
@@ -150,7 +154,7 @@ def motor_crianca(aluno_anon: str) -> dict:
     return dados
 
 
-@app.get("/motor/criancas-exemplo")
+@app.get("/motor/criancas-exemplo", dependencies=[Depends(guards.exigir_dados_individuais)])
 def motor_criancas_exemplo(limite: int = 12) -> list[dict]:
     """Amostra de identificadores para o seletor da tela Familia — nao ha login
     real, entao a familia escolhe de uma lista em vez de digitar no vazio.
@@ -159,7 +163,7 @@ def motor_criancas_exemplo(limite: int = 12) -> list[dict]:
     return engine_service.amostra_criancas(limite=limite)
 
 
-@app.post("/motor/reclassificar/{aluno_anon}")
+@app.post("/motor/reclassificar/{aluno_anon}", dependencies=[Depends(guards.exigir_dados_individuais)])
 def motor_reclassificar(aluno_anon: str) -> dict:
     """Simula 'a familia nao confirmou a vaga': remove a crianca, roda o DA de
     novo e devolve o diff — quem subiu, de onde para onde. Nao altera o estado
@@ -171,7 +175,7 @@ def motor_reclassificar(aluno_anon: str) -> dict:
     return resultado
 
 
-@app.get("/motor/notificacoes")
+@app.get("/motor/notificacoes", dependencies=[Depends(guards.exigir_dados_individuais)])
 def motor_notificacoes(limite: int = 20) -> dict:
     """Timeline de notificacoes. O Twilio nao tem credencial configurada neste
     ambiente, entao os envios sao SIMULADOS — a resposta marca isso
@@ -185,7 +189,7 @@ def motor_notificacoes(limite: int = 20) -> dict:
 # Programas (unidades)
 # --------------------------------------------------------------------------
 
-@app.post("/programas", response_model=schemas.ProgramaOut)
+@app.post("/programas", response_model=schemas.ProgramaOut, dependencies=[Depends(guards.exigir_admin)])
 def criar_programa(dados: schemas.ProgramaIn, db: Session = Depends(get_db)):
     programa = models.Programa(**dados.model_dump())
     db.add(programa)
@@ -227,7 +231,7 @@ def _serializar_programa(programa: models.Programa, db: Session) -> schemas.Prog
 # Etapa 1: inscricao
 # --------------------------------------------------------------------------
 
-@app.delete("/inscricao/{crianca_id}")
+@app.delete("/inscricao/{crianca_id}", dependencies=[Depends(guards.exigir_admin)])
 def excluir_inscricao(crianca_id: int, confirmar: bool = False, db: Session = Depends(get_db)):
     """Remove UMA inscricao e o que depende dela (preferencias, notificacoes).
 
@@ -268,11 +272,11 @@ def excluir_inscricao(crianca_id: int, confirmar: bool = False, db: Session = De
     nome = crianca.nome
     db.delete(crianca)
     db.commit()
-    logging.info("inscricao %s (%s) excluida via DELETE /inscricao", crianca_id, nome)
+    logging.info("inscricao %s excluida via DELETE /inscricao", crianca_id)
     return {"ok": True, "crianca_id": crianca_id, "nome": nome, "excluida": True}
 
 
-@app.post("/inscricao", response_model=schemas.InscricaoOut)
+@app.post("/inscricao", response_model=schemas.InscricaoOut, dependencies=[Depends(guards.exigir_inscricoes_abertas)])
 def inscrever(dados: schemas.InscricaoIn, db: Session = Depends(get_db)):
     crianca = crud.criar_inscricao(db, dados)
     whatsapp.enviar_whatsapp(
@@ -561,7 +565,12 @@ def remover_preferencia(
 
 
 @app.get("/classificacao/{crianca_id}/recomendacoes", response_model=list[schemas.RecomendacaoOut])
-def recomendacoes(crianca_id: int, limite: int = 4, db: Session = Depends(get_db)):
+def recomendacoes(
+    crianca_id: int,
+    limite: int = 4,
+    telefone: str = Depends(auth.obter_telefone_autenticado),
+    db: Session = Depends(get_db),
+):
     """Unidades FORA das preferencias declaradas onde a pontuacao da crianca
     daria chance real de vaga.
 
@@ -577,6 +586,7 @@ def recomendacoes(crianca_id: int, limite: int = 4, db: Session = Depends(get_db
     crianca = db.get(models.Crianca, crianca_id)
     if crianca is None:
         raise HTTPException(404, "Crianca nao encontrada")
+    auth.garantir_dono(crianca, telefone)
 
     score = crianca.score or 0.0
     ja_escolhidos = {p.programa_id for p in crianca.preferencias}
@@ -663,7 +673,7 @@ def escolher_unidade(
 # Etapa 3/4: avancar status do processo (classificado, selecionado, matriculado...)
 # --------------------------------------------------------------------------
 
-@app.post("/avancar_processo", response_model=schemas.InscricaoOut)
+@app.post("/avancar_processo", response_model=schemas.InscricaoOut, dependencies=[Depends(guards.exigir_admin)])
 def avancar_processo(dados: schemas.AvancarProcessoIn, db: Session = Depends(get_db)):
     crianca = db.get(models.Crianca, dados.crianca_id)
     if crianca is None:
@@ -726,7 +736,8 @@ def avancar_processo(dados: schemas.AvancarProcessoIn, db: Session = Depends(get
 def verificar_webhook_whatsapp(request: Request):
     params = request.query_params
     if (
-        params.get("hub.mode") == "subscribe"
+        config.META_VERIFY_TOKEN
+        and params.get("hub.mode") == "subscribe"
         and params.get("hub.verify_token") == config.META_VERIFY_TOKEN
     ):
         return Response(content=params.get("hub.challenge", ""), media_type="text/plain")
@@ -787,7 +798,10 @@ def _processar_mensagem_whatsapp(db: Session, telefone: str, texto: str) -> str:
     )
 
 
-@app.post("/whatsapp/webhook")
+@app.post(
+    "/whatsapp/webhook",
+    dependencies=[Depends(guards.exigir_inscricoes_abertas), Depends(guards.exigir_assinatura_meta)],
+)
 async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.json()
     for telefone, texto in _extrair_mensagens_meta(payload):
@@ -799,7 +813,7 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     return {"status": "ok"}
 
 
-@app.post("/whatsapp/enviar_convocacao/{crianca_id}")
+@app.post("/whatsapp/enviar_convocacao/{crianca_id}", dependencies=[Depends(guards.exigir_admin)])
 def enviar_convocacao_manual(crianca_id: int, db: Session = Depends(get_db)):
     """Endpoint auxiliar para reenviar a convocacao manualmente (ex: falha anterior)."""
     crianca = db.get(models.Crianca, crianca_id)
@@ -820,7 +834,7 @@ def enviar_convocacao_manual(crianca_id: int, db: Session = Depends(get_db)):
 # Job mensal de verificacao de telefone (trigger manual para demo/teste)
 # --------------------------------------------------------------------------
 
-@app.post("/jobs/verificar_telefones")
+@app.post("/jobs/verificar_telefones", dependencies=[Depends(guards.exigir_admin)])
 def disparar_verificacao_telefones(db: Session = Depends(get_db)):
     enviados = whatsapp.disparar_verificacao_mensal_telefone(db)
     return {"mensagens_enviadas": enviados}

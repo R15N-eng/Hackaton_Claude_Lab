@@ -465,7 +465,7 @@ def timeline_notificacoes(limite: int = 20) -> dict:
             "canal": "whatsapp",
             "enviado_em": enviado.isoformat() + "Z",
             "texto": (
-                f"Prefeitura do Rio / SME: sua vaga de creche foi definida em "
+                f"[Simulacao de projeto independente] Sua vaga de creche foi definida em "
                 f"{nome}. Compareca a unidade com os documentos para confirmar "
                 f"a matricula."
             ),

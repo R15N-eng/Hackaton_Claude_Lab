@@ -44,8 +44,6 @@ select a.aluno_anon                              as crianca,
        a.horario                                 as turno,
        lpad(cast(a.unidade as varchar),7,'0')||'|'||trim(a.grupamento)||'|'||a.horario as programa,
        coalesce(s.score, 0)                      as score,
-       a.bairro                                  as bairro_familia,
-       a.CEP                                     as cep_familia,
        a.situacao,
        case when a.situacao='Confirmado' then 1 else 0 end as confirmado_real
 from A a left join SCORE s using(prm_id, plm_id, ipl_id)
@@ -70,12 +68,12 @@ u = u[["unidade", "CRE", "microárea", "BAIRRO", "LATITUDE", "LONGITUDE", "Tipo"
 u = u.drop_duplicates("unidade")
 c.register("GEO", u)
 
-c.sql(f"copy (select o.*, g.lat, g.lon, g.bairro_unidade, g.CRE, g.microarea from OPCOES o left join GEO g using(unidade)) to '{a.out}/opcoes.parquet' (format parquet)")
+c.sql(f"copy (select o.* exclude (prm_id, plm_id, ipl_id, situacao), g.lat, g.lon, g.bairro_unidade, g.CRE, g.microarea from OPCOES o left join GEO g using(unidade)) to '{a.out}/opcoes.parquet' (format parquet)")
 c.sql(f"copy (select p.*, g.lat, g.lon, g.bairro_unidade, g.CRE, g.microarea from PROGRAMAS p left join GEO g using(unidade)) to '{a.out}/programas.parquet' (format parquet)")
 
-n_op, n_pr = c.sql("select count(*) from OPCOES").fetchone()[0], c.sql("select count(*) from PROGRAMAS").fetchone()[0]
-n_cr = c.sql("select count(distinct crianca) from OPCOES").fetchone()[0]
-cap  = c.sql("select sum(capacidade) from PROGRAMAS").fetchone()[0]
-sem_geo = c.sql("select count(*) from PROGRAMAS p left join GEO g using(unidade) where g.lat is null").fetchone()[0]
+n_op, n_pr = c.sql("select count(*) from OPCOES").fetchall()[0][0], c.sql("select count(*) from PROGRAMAS").fetchall()[0][0]
+n_cr = c.sql("select count(distinct crianca) from OPCOES").fetchall()[0][0]
+cap  = c.sql("select sum(capacidade) from PROGRAMAS").fetchall()[0][0]
+sem_geo = c.sql("select count(*) from PROGRAMAS p left join GEO g using(unidade) where g.lat is null").fetchall()[0][0]
 print(f"ano {a.ano}: {n_cr} crianças · {n_op} opções · {n_pr} programas · capacidade {cap}")
 print(f"programas sem geo: {sem_geo}")

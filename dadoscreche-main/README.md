@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> **Nesta cópia, as duas bases de nível individual (`01_QueryA` e `02_QueryB`) não são distribuídas.**
+> O aplicativo não as usa. Elas só são necessárias para regenerar `backend/data/` e para o motor alternativo em `pessoa_1/`.
+> Quem precisar delas deve obtê-las na fonte do hackathon e seguir os termos de lá. Não as adicione a este repositório.
+> O texto abaixo é o README original do conjunto de dados.
+
 # 🎒 Claude Impact Lab 2026 | Dataset Inscrição Creche do Rio
 
 [![Claude](https://img.shields.io/badge/Claude-Impact%20Lab-5436DA?style=for-the-badge&logo=anthropic&logoColor=white)](https://www.anthropic.com) [![Rio de Janeiro](https://img.shields.io/badge/Prefeitura-Rio%20de%20Janeiro-1E3A8A?style=for-the-badge)](https://prefeitura.rio/)

@@ -1,4 +1,9 @@
-🔗 **Site:** https://r15n-eng.github.io/Hackaton_Claude_Lab
+> [!IMPORTANT]
+> **Projeto independente, feito em hackathon. Não é um serviço da Prefeitura do Rio nem da Secretaria Municipal de Educação.**
+> A API pública está suspensa: a demonstração online mostra as telas, mas não consulta dados.
+> Não informe dados pessoais reais. O cadastro fica desativado fora do ambiente local, e a API só aceita inscrições com `ACCEPT_REGISTRATIONS=true`.
+
+🔗 **Demonstração (cadastro desativado):** https://r15n-eng.github.io/Hackaton_Claude_Lab
 🎥 **Vídeo:** Na raiz do  git
 
 ---
@@ -23,8 +28,8 @@ saída de `backend/engine/simulate.py`.
 
 ## O problema, com números reais
 
-A base pública da SME (`dadoscreche-main/`, Query A/B/C, 2021–2025,
-anonimizada) mostra a dinâmica do funil de inscrição ano a ano:
+A base do hackathon, anonimizada pela SME (Query A/B/C, 2021–2025; as
+tabelas A e B não são distribuídas neste repositório), mostra a dinâmica do funil de inscrição ano a ano:
 
 | Ano | Inscrições | Crianças distintas | Vagas ocupadas | Lista de espera | Cancelados | Inscrições/vaga | Taxa de ocupação |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -170,12 +175,12 @@ pontos ocupa a vaga enquanto 343 esperam, muitas com pontuação 30× maior.
 
 E a redistribuição funciona rápido: liberar **uma única vaga** nesse
 programa gera **3 movimentos em cadeia** — a próxima da fila sobe, e isso
-libera espaço para a próxima, e assim por diante — calculados e notificados
-em **1,2 segundo**, contra o processo manual de hoje, sem prazo definido.
+libera espaço para a próxima, e assim por diante — calculados
+em **1,2 segundo** (o envio de avisos é simulado), contra o processo manual de hoje, sem prazo definido.
 
 ---
 
-## Qual é o motor oficial
+## Qual é o motor principal
 
 O repositório contém mais de uma implementação de classificação, por termos
 trabalhado em paralelo. Para não haver dúvida, **o motor canônico é
@@ -184,7 +189,7 @@ números acima.
 
 | Pasta | O que é | Usado pela API? |
 |---|---|---|
-| **`backend/engine/`** | **Motor oficial.** Deferred Acceptance (Gale–Shapley), desempate por loteria única reproduzível, sobre `backend/data/*.parquet` (commitado, não regenerado a cada deploy). | ✅ sim — via `backend/app/engine_service.py` |
+| **`backend/engine/`** | **Motor principal.** Deferred Acceptance (Gale–Shapley), desempate por loteria única reproduzível, sobre `backend/data/*.parquet` (commitado, não regenerado a cada deploy). | ✅ sim — via `backend/app/engine_service.py` |
 | `pessoa_1/` | Motor alternativo: mesmo Deferred Acceptance, mas desempate pelos critérios reais da régua (irmão já matriculado, mãe adolescente) em vez de loteria. Mais fiel à régua da SME, mas exigiria revalidar todo o material do pitch e resolver um cold start de ~170s no Render — candidato natural para a próxima versão, nada foi apagado. | ❌ não (revertido, ver histórico) |
 | `backend/app/classification_engine.py` | Régua de pontuação e fila do fluxo de inscrição **ao vivo** (SQLite), usado pelas telas de inscrição e pelo WhatsApp do protótipo. Não é o motor de alocação. | ✅ só no fluxo de inscrição |
 
@@ -223,6 +228,8 @@ que está medido é o que o motor realmente produz sobre dados reais; o resto
 ---
 
 ## Como rodar
+
+Para usar as telas Família e SME, crie `backend/.env` com `EXPOSE_CHILD_RECORDS=true`. Somente em ambiente local.
 
 O backend ocupa a porta 8000, então sirva o front em outra:
 
@@ -269,7 +276,7 @@ frontend/
   motor-api.js      fronteira com /motor/*
   inscricao.html … status.html   fluxo de inscrição em 4 telas (demo ao vivo)
 pessoa_1/           motor paralelo do Back A (não usado pela API)
-dadoscreche-main/   base bruta da SME + análise exploratória
+dadoscreche-main/   dados do hackathon (sem as bases individuais) + análise
 ```
 
 ---
@@ -318,16 +325,23 @@ explicativo da regra da SME, não como funcionalidade.
 - **Nome de unidade casa em ~58%** das unidades (488 de 836). Onde não casa, a
   interface mostra o código — não inventa nome.
 - **Desempate por loteria única, não pelos critérios documentais da régua.**
-  O motor oficial (`backend/engine/`) desempata por sorteio único e reproduzível
-  — é determinístico, auditável e à prova de estratégia (declarar a preferência
-  verdadeira é sempre a melhor jogada). Ele **não** usa os critérios reais de
+  O motor principal (`backend/engine/`) desempata por sorteio único e reproduzível
+  — é determinístico e auditável. A garantia clássica de que declarar a
+  preferência verdadeira é a melhor jogada vale quando a lista não tem limite;
+  com no máximo 5 opções, ela deixa de valer em geral (Haeringer e Klijn, 2009).
+  Ele **não** usa os critérios reais de
   desempate da SME (irmão já matriculado, responsável menor de 18 anos), que
   existem nos dados históricos e são explorados pelo motor alternativo
   (`pessoa_1`, ver tabela acima) — não trocamos para ele nesta entrega por
   falta de tempo para revalidar os números contra o material já escrito.
+- **Rotas de manutenção.** Exigem o header `X-Admin-Key` igual à variável `ADMIN_API_KEY`; sem ela, ficam desativadas. Para testar o fluxo localmente, defina também `ACCEPT_REGISTRATIONS=true` e use apenas dados fictícios.
+- **Registros por criança.** As rotas `/motor/programa`, `/motor/crianca/*`, `/motor/criancas-exemplo`, `/motor/reclassificar/*` e `/motor/notificacoes` ficam desativadas por padrão. As telas Família e SME dependem delas: no ambiente local, defina `EXPOSE_CHILD_RECORDS=true`.
+- **Webhook do WhatsApp.** Só processa mensagens com a assinatura da Meta (`X-Hub-Signature-256`), conferida com `META_APP_SECRET`.
+- **CORS.** Navegadores só acessam a API a partir do site no GitHub Pages ou de `localhost` (ajuste com `CORS_ORIGINS`).
+- **Ainda sem proteção.** O painel SME não tem autenticação própria (as rotas por criança ficam apenas desativadas por padrão) e o contador de tentativas de login fica em memória. Não use com dados reais.
 - **Autenticação mínima.** Há login por telefone com código via WhatsApp para a
-  família voltar de outro aparelho, mas o painel SME/CRE não tem autenticação
-  nenhuma — é protótipo de demonstração, não sistema em produção.
+  família voltar de outro aparelho. É um protótipo de demonstração, não um
+  sistema em produção.
 - **Não há tempo de espera, distância exata nem renda** — esses dados não
   existem na base anonimizada e não são exibidos em nenhuma tela.
 
@@ -336,6 +350,7 @@ explicativo da regra da SME, não como funcionalidade.
 ## Sobre os dados
 
 Base anonimizada pela SME (aleatorização, generalização e supressão).
+Para reduzir o risco de reidentificação, a versão atual não distribui as bases de inscrições e de respostas socioeconômicas, e o arquivo usado pela aplicação não tem colunas de endereço das famílias. **As versões anteriores continuam no histórico do Git.** Os demais dados continuam sendo registros individuais: trate-os como sensíveis e não os combine com outras fontes.
 **Os indicadores não representam a realidade** — ilustram a dinâmica do processo
 de inscrição em creche entre 2021 e 2025.
 

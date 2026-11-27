@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+
+# Bases de nível individual: não redistribuir
+**/01_QueryA_InscricoesPorAno.csv*
+**/02_QueryB_RespostasSocioEconomicas.csv*

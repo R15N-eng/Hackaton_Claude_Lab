@@ -73,7 +73,7 @@ def enviar_whatsapp(
     except Exception as exc:  # noqa: BLE001
         notificacao.status = "falhou"
         notificacao.erro = str(exc)
-        logger.warning("Falha ao enviar WhatsApp para %s: %s", telefone, exc)
+        logger.warning("Falha ao enviar WhatsApp: %s", type(exc).__name__)
     finally:
         db.add(notificacao)
         db.commit()
